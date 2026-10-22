@@ -2,9 +2,42 @@
 import { useState } from 'react'
 import './App.css'
 import Materials from './Materials'
+import ListWaste from './ListWaste'
+import { initialMaterials } from './materialData'
+import Auth from './Auth'
 
 function App() {
   const [page, setPage] = useState('home')
+  const [materials, setMaterials] = useState(initialMaterials)
+
+  const [user, setUser] = useState(() => {
+    try {
+      return JSON.parse(
+        localStorage.getItem('reusehub_demo_user')
+      ) || null
+    } catch {
+      return null
+    }
+  })
+
+  const handleLogin = (account) => {
+    setUser(account)
+
+    localStorage.setItem(
+      'reusehub_demo_user',
+      JSON.stringify(account)
+    )
+
+    setPage('home')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('reusehub_demo_user')
+    setUser(null)
+    setPage('home')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const goHome = () => {
     setPage('home')
@@ -14,6 +47,25 @@ function App() {
   const goMaterials = () => {
     setPage('materials')
     window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const goListWaste = () => {
+    setPage('list')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const handleListWaste = () => {
+    if (!user) {
+      setPage('auth')
+      return
+    }
+
+    if (user.role !== 'supplier') {
+      alert('Only Supplier accounts can publish material listings.')
+      return
+    }
+
+    goListWaste()
   }
 
   const goHowItWorks = () => {
@@ -74,12 +126,27 @@ function App() {
         </div>
 
         <div className="nav-actions">
-          <button
-            className="login-btn"
-            onClick={() => alert('Login feature will be added soon!')}
-          >
-            Login
-          </button>
+          {user ? (
+            <>
+              <span className="user-greeting">
+                Hi, {user.name}
+              </span>
+
+              <button
+                className="login-btn"
+                onClick={handleLogout}
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <button
+              className="login-btn"
+              onClick={() => setPage('auth')}
+            >
+              Login / Register
+            </button>
+          )}
 
           <button className="primary-btn" onClick={goMaterials}>
             Get Started ↗
@@ -87,8 +154,42 @@ function App() {
         </div>
       </nav>
 
-      {page === 'materials' ? (
-        <Materials />
+      {page === 'auth' ? (
+        <Auth
+          onLogin={handleLogin}
+          onBack={goHome}
+        />
+      ) : page === 'materials' ? (
+        <Materials
+          materials={materials}
+          user={user}
+          onRequireLogin={() => setPage('auth')}
+        />
+      ) : page === 'list' ? (
+        user && user.role === 'supplier' ? (
+          <ListWaste
+            onAddMaterial={(newMaterial) => {
+              setMaterials((previousMaterials) => [
+                newMaterial,
+                ...previousMaterials,
+              ])
+
+              setPage('materials')
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+            }}
+          />
+        ) : (
+          <main style={{ padding: '60px 20px', textAlign: 'center' }}>
+            <h2>Supplier Login Required</h2>
+            <p>Please login with a Supplier account to publish listings.</p>
+            <button
+              className="primary-btn"
+              onClick={() => setPage('auth')}
+            >
+              Login / Register
+            </button>
+          </main>
+        )
       ) : (
         <>
           <main>
@@ -123,9 +224,7 @@ function App() {
 
                   <button
                     className="secondary-btn"
-                    onClick={() =>
-                      alert('Waste listing form will be added soon!')
-                    }
+                    onClick={handleListWaste}
                   >
                     + List Your Waste
                   </button>
@@ -182,7 +281,12 @@ function App() {
                   <p>
                     Aluminium, steel and other reusable metal materials.
                   </p>
-                  <a href="#how-it-works">Explore category ↗</a>
+                  <a href="#materials-page" onClick={(e) => {
+                    e.preventDefault()
+                    goMaterials()
+                  }}>
+                    Explore category ↗
+                  </a>
                 </article>
 
                 <article className="material-card">
@@ -191,7 +295,12 @@ function App() {
                   <p>
                     Reusable plastic materials for further processing.
                   </p>
-                  <a href="#how-it-works">Explore category ↗</a>
+                  <a href="#materials-page" onClick={(e) => {
+                    e.preventDefault()
+                    goMaterials()
+                  }}>
+                    Explore category ↗
+                  </a>
                 </article>
 
                 <article className="material-card">
@@ -200,7 +309,12 @@ function App() {
                   <p>
                     Industrial rubber leftovers with reuse potential.
                   </p>
-                  <a href="#how-it-works">Explore category ↗</a>
+                  <a href="#materials-page" onClick={(e) => {
+                    e.preventDefault()
+                    goMaterials()
+                  }}>
+                    Explore category ↗
+                  </a>
                 </article>
 
                 <article className="material-card">
@@ -209,7 +323,12 @@ function App() {
                   <p>
                     Reusable wood offcuts and manufacturing leftovers.
                   </p>
-                  <a href="#how-it-works">Explore category ↗</a>
+                  <a href="#materials-page" onClick={(e) => {
+                    e.preventDefault()
+                    goMaterials()
+                  }}>
+                    Explore category ↗
+                  </a>
                 </article>
               </div>
 
@@ -228,40 +347,39 @@ function App() {
                 <div className="step">
                   <span>01</span>
                   <h3>List Materials</h3>
-                  <p>
-                    Suppliers share the waste materials they have available.
-                  </p>
+                  <p>Suppliers share the waste materials they have available.</p>
                 </div>
 
                 <div className="step">
                   <span>02</span>
                   <h3>Find a Match</h3>
-                  <p>
-                    Buyers explore materials that fit their requirements.
-                  </p>
+                  <p>Buyers explore materials that fit their requirements.</p>
                 </div>
 
                 <div className="step">
                   <span>03</span>
                   <h3>Connect</h3>
-                  <p>
-                    Interested companies can send requests to each other.
-                  </p>
+                  <p>Interested companies can send requests to each other.</p>
                 </div>
 
                 <div className="step">
                   <span>04</span>
                   <h3>Reuse</h3>
-                  <p>
-                    Give usable industrial materials another purpose.
-                  </p>
+                  <p>Give usable industrial materials another purpose.</p>
                 </div>
               </div>
             </section>
           </main>
 
           <footer className="footer">
-            <a href="#home" className="logo" onClick={goHome}>
+            <a
+              href="#home"
+              className="logo"
+              onClick={(e) => {
+                e.preventDefault()
+                goHome()
+              }}
+            >
               <span className="logo-icon">♻</span>
               Reuse<span>Hub</span>
             </a>

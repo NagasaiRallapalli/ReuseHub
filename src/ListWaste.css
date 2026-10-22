@@ -1,0 +1,184 @@
+
+.list-waste-page {
+  min-height: 80vh;
+  padding: 55px 7%;
+  background: #f7faf8;
+}
+
+.listing-header {
+  text-align: center;
+  margin-bottom: 35px;
+}
+
+.listing-tag {
+  color: #198754;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+
+.listing-header h1 {
+  margin: 12px 0;
+  color: #173d2b;
+  font-size: 38px;
+}
+
+.listing-header p {
+  color: #68756d;
+  line-height: 1.7;
+}
+
+.listing-form {
+  max-width: 850px;
+  margin: 0 auto;
+  padding: 32px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+}
+
+.listing-form h2 {
+  margin: 0 0 25px;
+  color: #173d2b;
+  font-size: 21px;
+}
+
+.listing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.listing-field {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.listing-field label {
+  color: #263b30;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.listing-field input,
+.listing-field select,
+.listing-field textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 12px 13px;
+  border: 1px solid #d8e1db;
+  border-radius: 8px;
+  background: white;
+  color: #263b30;
+  font: inherit;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.listing-field input:focus,
+.listing-field select:focus,
+.listing-field textarea:focus {
+  outline: none;
+  border-color: #198754;
+  box-shadow: 0 0 0 3px rgba(25, 135, 84, 0.1);
+}
+
+.quantity-field {
+  display: flex;
+  gap: 8px;
+}
+
+.quantity-field input {
+  flex: 1;
+}
+
+.quantity-field select {
+  width: 105px;
+}
+
+.description-field {
+  margin-top: 23px;
+}
+
+.listing-field textarea {
+  resize: vertical;
+}
+
+.listing-submit,
+.listing-success button {
+  margin-top: 25px;
+  padding: 14px 22px;
+  border: none;
+  border-radius: 8px;
+  background: #198754;
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.listing-submit:hover,
+.listing-success button:hover {
+  background: #146c43;
+}
+
+.listing-note {
+  margin-top: 15px;
+  color: #77847b;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.listing-success {
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 40px 25px;
+  background: white;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+}
+
+.listing-success .success-icon {
+  display: inline-flex;
+  width: 55px;
+  height: 55px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #e2f5e9;
+  color: #198754;
+  font-size: 30px;
+}
+
+.listing-success h2 {
+  color: #173d2b;
+}
+
+.listing-success p {
+  color: #68756d;
+  line-height: 1.7;
+}
+
+@media (max-width: 600px) {
+  .list-waste-page {
+    padding: 35px 5%;
+  }
+
+  .listing-header h1 {
+    font-size: 30px;
+  }
+
+  .listing-form {
+    padding: 22px 16px;
+  }
+
+  .listing-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .listing-submit {
+    width: 100%;
+  }
+}

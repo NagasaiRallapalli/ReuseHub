@@ -1,101 +1,42 @@
-
 import { useState } from 'react'
 import './Materials.css'
 
-const materials = [
-  {
-    id: 1,
-    name: 'Aluminium Scrap',
-    category: 'Metal',
-    quantity: 1000,
-    unit: 'kg',
-    condition: 'Good',
-    location: 'Vijayawada, AP',
-    price: 'Contact supplier',
-    description:
-      'Reusable aluminium scrap suitable for further industrial processing.',
-    icon: '⚙',
-  },
-  {
-    id: 2,
-    name: 'Recycled Plastic',
-    category: 'Plastic',
-    quantity: 500,
-    unit: 'kg',
-    condition: 'Processed',
-    location: 'Guntur, AP',
-    price: 'Contact supplier',
-    description:
-      'Recycled plastic material available for suitable manufacturing needs.',
-    icon: '◈',
-  },
-  {
-    id: 3,
-    name: 'Rubber Waste',
-    category: 'Rubber',
-    quantity: 750,
-    unit: 'kg',
-    condition: 'Reusable',
-    location: 'Eluru, AP',
-    price: 'Contact supplier',
-    description:
-      'Industrial rubber leftovers that may be reused after inspection.',
-    icon: '◉',
-  },
-  {
-    id: 4,
-    name: 'Wood Offcuts',
-    category: 'Wood',
-    quantity: 300,
-    unit: 'kg',
-    condition: 'Good',
-    location: 'Rajahmundry, AP',
-    price: 'Contact supplier',
-    description:
-      'Wood offcuts suitable for reuse in appropriate applications.',
-    icon: '▤',
-  },
-  {
-    id: 5,
-    name: 'Steel Scrap',
-    category: 'Metal',
-    quantity: 1200,
-    unit: 'kg',
-    condition: 'Mixed',
-    location: 'Hyderabad, Telangana',
-    price: 'Contact supplier',
-    description:
-      'Mixed steel scrap for buyers seeking reusable metal materials.',
-    icon: '⚙',
-  },
-  {
-    id: 6,
-    name: 'Plastic Granules',
-    category: 'Plastic',
-    quantity: 400,
-    unit: 'kg',
-    condition: 'Processed',
-    location: 'Vijayawada, AP',
-    price: 'Contact supplier',
-    description:
-      'Processed plastic granules for potential industrial reuse.',
-    icon: '◈',
-  },
+const categories = [
+  'All',
+  'Metal',
+  'Plastic',
+  'Rubber',
+  'Wood',
+  'Paper',
+  'Other',
 ]
 
-const categories = ['All', 'Metal', 'Plastic', 'Rubber', 'Wood']
-
-function Materials() {
+function Materials({
+  materials = [],
+  user = null,
+  onRequireLogin = () => {},
+}) {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('All')
   const [selectedMaterial, setSelectedMaterial] = useState(null)
   const [showRequestForm, setShowRequestForm] = useState(false)
   const [requestSubmitted, setRequestSubmitted] = useState(false)
 
+  const [requestData, setRequestData] = useState({
+    companyName: '',
+    buyerName: '',
+    email: '',
+    quantity: '',
+    message: '',
+  })
+
   const filteredMaterials = materials.filter((material) => {
+    const name = (material.name || '').toLowerCase()
+    const location = (material.location || '').toLowerCase()
+
     const matchesSearch =
-      material.name.toLowerCase().includes(search.toLowerCase()) ||
-      material.location.toLowerCase().includes(search.toLowerCase())
+      name.includes(search.toLowerCase()) ||
+      location.includes(search.toLowerCase())
 
     const matchesCategory =
       category === 'All' || material.category === category
@@ -103,31 +44,83 @@ function Materials() {
     return matchesSearch && matchesCategory
   })
 
-  const openRequestForm = (material = null) => {
-    setSelectedMaterial(material)
+  const openRequestForm = () => {
+    if (!user) {
+      onRequireLogin()
+      return
+    }
+
+    if (user.role !== 'buyer') {
+      alert(
+        'Only Buyer accounts can send material requests. Please log in with a Buyer account.'
+      )
+      return
+    }
+
+    setRequestData({
+      companyName: '',
+      buyerName: user.name || '',
+      email: user.email || '',
+      quantity: '',
+      message: '',
+    })
+
     setRequestSubmitted(false)
     setShowRequestForm(true)
   }
 
-  const closeRequestForm = () => {
-    setShowRequestForm(false)
+  const closeModal = () => {
     setSelectedMaterial(null)
+    setShowRequestForm(false)
     setRequestSubmitted(false)
+  }
+
+  const handleRequestSubmit = (event) => {
+    event.preventDefault()
+
+    if (!user || user.role !== 'buyer') {
+      alert('Please log in with a Buyer account to submit a request.')
+      setShowRequestForm(false)
+      return
+    }
+
+    const requestedQuantity = Number(requestData.quantity)
+    const availableQuantity = Number(selectedMaterial.quantity)
+
+    if (
+      !Number.isFinite(requestedQuantity) ||
+      requestedQuantity <= 0 ||
+      requestedQuantity > availableQuantity
+    ) {
+      alert('Please enter a valid quantity within the available amount.')
+      return
+    }
+
+    setRequestSubmitted(true)
   }
 
   return (
     <div className="materials-page">
       <div className="materials-header">
         <p className="eyebrow">REUSEHUB MARKETPLACE</p>
+
         <h1>Find Reusable Materials</h1>
+
         <p>
-          Discover industrial materials that could become valuable
-          resources for your business.
+          Explore materials listed by suppliers and find resources
+          for your business.
         </p>
+
+        {user && (
+          <p className="demo-note">
+            Signed in as {user.name} ({user.role}).
+          </p>
+        )}
       </div>
 
       <div className="materials-search">
         <span>⌕</span>
+
         <input
           type="text"
           placeholder="Search materials or location..."
@@ -136,7 +129,9 @@ function Materials() {
         />
 
         {search && (
-          <button onClick={() => setSearch('')}>Clear</button>
+          <button onClick={() => setSearch('')}>
+            Clear
+          </button>
         )}
       </div>
 
@@ -162,9 +157,9 @@ function Materials() {
           {filteredMaterials.map((material) => (
             <article className="listing-card" key={material.id}>
               <div
-                className={`listing-icon ${material.category.toLowerCase()}`}
+                className={`listing-icon ${(material.category || 'other').toLowerCase()}`}
               >
-                {material.icon}
+                {material.icon || '♻'}
               </div>
 
               <div className="listing-category">
@@ -175,8 +170,10 @@ function Materials() {
 
               <div className="listing-detail">
                 <span>Available quantity</span>
+
                 <strong>
-                  {material.quantity.toLocaleString()} {material.unit}
+                  {Number(material.quantity).toLocaleString()}{' '}
+                  {material.unit}
                 </strong>
               </div>
 
@@ -191,7 +188,11 @@ function Materials() {
 
               <button
                 className="view-details-btn"
-                onClick={() => setSelectedMaterial(material)}
+                onClick={() => {
+                  setSelectedMaterial(material)
+                  setShowRequestForm(false)
+                  setRequestSubmitted(false)
+                }}
               >
                 View Details ↗
               </button>
@@ -202,7 +203,7 @@ function Materials() {
         <div className="empty-state">
           <span>⌕</span>
           <h3>No materials found</h3>
-          <p>Try another search term or select a different category.</p>
+          <p>Try another search term or category.</p>
 
           <button
             className="view-details-btn"
@@ -216,171 +217,181 @@ function Materials() {
         </div>
       )}
 
-      {/* Material Details Modal */}
-      {selectedMaterial && !showRequestForm && (
-        <div
-          className="modal-overlay"
-          onClick={() => setSelectedMaterial(null)}
-        >
+      {selectedMaterial && (
+        <div className="modal-overlay" onClick={closeModal}>
           <div
             className="material-modal"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="material-modal-title"
             onClick={(event) => event.stopPropagation()}
           >
             <button
               className="modal-close"
-              onClick={() => setSelectedMaterial(null)}
-              aria-label="Close details"
+              onClick={closeModal}
+              aria-label="Close modal"
             >
               ×
             </button>
 
-            <div
-              className={`listing-icon ${selectedMaterial.category.toLowerCase()}`}
-            >
-              {selectedMaterial.icon}
-            </div>
+            {!showRequestForm ? (
+              <>
+                <div
+                  className={`listing-icon ${(selectedMaterial.category || 'other').toLowerCase()}`}
+                >
+                  {selectedMaterial.icon || '♻'}
+                </div>
 
-            <p className="eyebrow">MATERIAL DETAILS</p>
-            <h2 id="material-modal-title">
-              {selectedMaterial.name}
-            </h2>
-            <p>{selectedMaterial.description}</p>
+                <p className="eyebrow">MATERIAL DETAILS</p>
 
-            <div className="modal-info">
-              <div>
-                <span>Category</span>
-                <strong>{selectedMaterial.category}</strong>
+                <h2>{selectedMaterial.name}</h2>
+
+                <p>{selectedMaterial.description}</p>
+
+                <div className="modal-info">
+                  <div>
+                    <span>Category</span>
+                    <strong>{selectedMaterial.category}</strong>
+                  </div>
+
+                  <div>
+                    <span>Quantity</span>
+                    <strong>
+                      {selectedMaterial.quantity}{' '}
+                      {selectedMaterial.unit}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Condition</span>
+                    <strong>{selectedMaterial.condition}</strong>
+                  </div>
+
+                  <div>
+                    <span>Location</span>
+                    <strong>{selectedMaterial.location}</strong>
+                  </div>
+                </div>
+
+                <p className="demo-note">
+                  Sample listing for demonstration. Supplier contact
+                  is not connected yet.
+                </p>
+
+                <button
+                  className="view-details-btn"
+                  onClick={openRequestForm}
+                >
+                  Send Request ↗
+                </button>
+              </>
+            ) : requestSubmitted ? (
+              <div className="request-success">
+                <div className="success-icon">✓</div>
+
+                <h2>Request Submitted!</h2>
+
+                <p>
+                  Your request for {selectedMaterial.name} has been
+                  submitted in this demo. It is not stored permanently
+                  and the supplier has not been notified.
+                </p>
+
+                <button
+                  className="view-details-btn"
+                  onClick={closeModal}
+                >
+                  Back to Materials
+                </button>
               </div>
-
-              <div>
-                <span>Quantity</span>
-                <strong>
-                  {selectedMaterial.quantity} {selectedMaterial.unit}
-                </strong>
-              </div>
-
-              <div>
-                <span>Condition</span>
-                <strong>{selectedMaterial.condition}</strong>
-              </div>
-
-              <div>
-                <span>Location</span>
-                <strong>{selectedMaterial.location}</strong>
-              </div>
-            </div>
-
-            <p className="demo-note">
-              Demo listing — supplier contact is not connected yet.
-            </p>
-
-            <button
-              className="view-details-btn"
-              onClick={() => openRequestForm(selectedMaterial)}
-            >
-              Send Request ↗
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Send Request Form Modal */}
-      {showRequestForm && (
-        <div
-          className="modal-overlay"
-          onClick={closeRequestForm}
-        >
-          <div
-            className="material-modal request-modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="request-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <button
-              className="modal-close"
-              onClick={closeRequestForm}
-              aria-label="Close request form"
-            >
-              ×
-            </button>
-
-            {!requestSubmitted ? (
+            ) : (
               <>
                 <p className="eyebrow">BUYER REQUEST</p>
-                <h2 id="request-title">Request a Material</h2>
-                <p>
-                  Enter your details to express interest in this listing.
-                </p>
+
+                <h2>Request {selectedMaterial.name}</h2>
 
                 <form
                   className="request-form"
-                  onSubmit={(event) => {
-                    event.preventDefault()
-                    setRequestSubmitted(true)
-                  }}
+                  onSubmit={handleRequestSubmit}
                 >
-                  <label htmlFor="request-material">Material</label>
-                  <input
-                    id="request-material"
-                    name="material"
-                    value={
-                      selectedMaterial?.name ||
-                      'General material enquiry'
-                    }
-                    readOnly
-                  />
-
-                  <label htmlFor="company-name">Company name</label>
-                  <input
-                    id="company-name"
-                    name="company"
-                    placeholder="Enter your company name"
-                    required
-                  />
-
-                  <label htmlFor="buyer-name">Your name</label>
-                  <input
-                    id="buyer-name"
-                    name="buyer"
-                    placeholder="Enter your name"
-                    required
-                  />
-
-                  <label htmlFor="buyer-email">Email address</label>
-                  <input
-                    id="buyer-email"
-                    name="email"
-                    type="email"
-                    placeholder="you@example.com"
-                    required
-                  />
-
-                  <label htmlFor="request-quantity">
-                    Required quantity (kg)
+                  <label>
+                    Company Name *
+                    <input
+                      name="companyName"
+                      value={requestData.companyName}
+                      onChange={(event) =>
+                        setRequestData({
+                          ...requestData,
+                          companyName: event.target.value,
+                        })
+                      }
+                      required
+                    />
                   </label>
-                  <input
-                    id="request-quantity"
-                    name="quantity"
-                    type="number"
-                    min="1"
-                    max={selectedMaterial?.quantity}
-                    placeholder="Enter quantity"
-                    required
-                  />
 
-                  <label htmlFor="request-message">
-                    Message (optional)
+                  <label>
+                    Contact Person *
+                    <input
+                      name="buyerName"
+                      value={requestData.buyerName}
+                      onChange={(event) =>
+                        setRequestData({
+                          ...requestData,
+                          buyerName: event.target.value,
+                        })
+                      }
+                      required
+                    />
                   </label>
-                  <textarea
-                    id="request-message"
-                    name="message"
-                    placeholder="Tell the supplier what you need..."
-                    rows="3"
-                  />
+
+                  <label>
+                    Email Address *
+                    <input
+                      type="email"
+                      name="email"
+                      value={requestData.email}
+                      onChange={(event) =>
+                        setRequestData({
+                          ...requestData,
+                          email: event.target.value,
+                        })
+                      }
+                      required
+                    />
+                  </label>
+
+                  <label>
+                    Required Quantity ({selectedMaterial.unit}) *
+                    <input
+                      type="number"
+                      name="quantity"
+                      min="1"
+                      max={selectedMaterial.quantity}
+                      value={requestData.quantity}
+                      onChange={(event) =>
+                        setRequestData({
+                          ...requestData,
+                          quantity: event.target.value,
+                        })
+                      }
+                      required
+                    />
+                  </label>
+
+                  <label>
+                    Message (Optional)
+                    <textarea
+                      name="message"
+                      rows="3"
+                      value={requestData.message}
+                      onChange={(event) =>
+                        setRequestData({
+                          ...requestData,
+                          message: event.target.value,
+                        })
+                      }
+                      placeholder="Add your requirements..."
+                    />
+                  </label>
 
                   <button
                     className="view-details-btn"
@@ -390,22 +401,6 @@ function Materials() {
                   </button>
                 </form>
               </>
-            ) : (
-              <div className="request-success">
-                <div className="success-icon">✓</div>
-                <h2>Request Submitted!</h2>
-                <p>
-                  Your demo request has been submitted successfully.
-                  No supplier has been contacted, and the request is
-                  not saved permanently.
-                </p>
-                <button
-                  className="view-details-btn"
-                  onClick={closeRequestForm}
-                >
-                  Done
-                </button>
-              </div>
             )}
           </div>
         </div>
