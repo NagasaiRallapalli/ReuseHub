@@ -1,4 +1,3 @@
-
 .materials-page {
   min-height: 100vh;
   padding: 55px 7%;
@@ -421,4 +420,70 @@
 .request-success p {
   line-height: 1.7;
   margin-bottom: 24px;
+}
+
+.request-error {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fff0f0;
+  color: #b42318;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.request-form .view-details-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* ---------- Bulk reservation progress ---------- */
+.reserve-block {
+  margin: 14px 0 0;
+}
+
+.progress {
+  height: 7px;
+  border-radius: 20px;
+  background: #e7efe6;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 20px;
+  background: #27824b;
+  transition: width 0.4s;
+}
+
+.reserve-block small {
+  display: block;
+  margin-top: 7px;
+  color: #78847b;
+  font-size: 11px;
+}
+
+.listing-card.fulfilled {
+  opacity: 0.72;
+}
+
+.fulfilled-badge {
+  margin-left: 8px;
+  padding: 3px 8px;
+  border-radius: 20px;
+  background: #fff0e0;
+  color: #a2601b;
+  font-size: 10px;
+  letter-spacing: 0.3px;
+  text-transform: none;
+}
+
+.view-details-btn:disabled {
+  background: #a9b9ae;
+  border-color: #a9b9ae;
+  cursor: not-allowed;
+}
+
+.material-modal .reserve-block {
+  margin-bottom: 18px;
 }

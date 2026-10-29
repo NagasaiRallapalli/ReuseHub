@@ -1,26 +1,27 @@
 import { useState } from 'react'
 import './Materials.css'
 
-const categories = [
-  'All',
-  'Metal',
-  'Plastic',
-  'Rubber',
-  'Wood',
-  'Paper',
-  'Other',
-]
+const categories = ['All', 'Metal', 'Plastic', 'Rubber', 'Wood', 'Paper', 'Other']
+
+const API_URL = 'http://localhost:5000/api/requests'
+
+function getAvailable(material) {
+  return Number(material.availableQuantity ?? material.quantity)
+}
 
 function Materials({
   materials = [],
   user = null,
   onRequireLogin = () => {},
+  onRefresh = () => {},
 }) {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('All')
   const [selectedMaterial, setSelectedMaterial] = useState(null)
   const [showRequestForm, setShowRequestForm] = useState(false)
   const [requestSubmitted, setRequestSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [requestError, setRequestError] = useState('')
 
   const [requestData, setRequestData] = useState({
     companyName: '',
@@ -44,16 +45,15 @@ function Materials({
     return matchesSearch && matchesCategory
   })
 
+  const isOwnListing = (material) =>
+    user && String(material.supplierId) === String(user.id)
+
+  const isFulfilled = (material) =>
+    material.status === 'Fulfilled' || getAvailable(material) <= 0
+
   const openRequestForm = () => {
     if (!user) {
       onRequireLogin()
-      return
-    }
-
-    if (user.role !== 'buyer') {
-      alert(
-        'Only Buyer accounts can send material requests. Please log in with a Buyer account.'
-      )
       return
     }
 
@@ -65,38 +65,104 @@ function Materials({
       message: '',
     })
 
+    setRequestError('')
     setRequestSubmitted(false)
     setShowRequestForm(true)
   }
 
   const closeModal = () => {
+    if (submitting) return
+
     setSelectedMaterial(null)
     setShowRequestForm(false)
     setRequestSubmitted(false)
+    setRequestError('')
   }
 
-  const handleRequestSubmit = (event) => {
+  const handleRequestSubmit = async (event) => {
     event.preventDefault()
 
-    if (!user || user.role !== 'buyer') {
-      alert('Please log in with a Buyer account to submit a request.')
-      setShowRequestForm(false)
+    if (!user) {
+      onRequireLogin()
+      return
+    }
+
+    if (!selectedMaterial) return
+
+    const token = localStorage.getItem('reusehub_token')
+
+    if (!token) {
+      setRequestError('Please log in again before sending a request.')
       return
     }
 
     const requestedQuantity = Number(requestData.quantity)
-    const availableQuantity = Number(selectedMaterial.quantity)
+    const availableQuantity = getAvailable(selectedMaterial)
 
     if (
       !Number.isFinite(requestedQuantity) ||
       requestedQuantity <= 0 ||
       requestedQuantity > availableQuantity
     ) {
-      alert('Please enter a valid quantity within the available amount.')
+      setRequestError(
+        `Enter a valid quantity (maximum ${availableQuantity} ${selectedMaterial.unit}).`
+      )
       return
     }
 
-    setRequestSubmitted(true)
+    setSubmitting(true)
+    setRequestError('')
+
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          materialId: String(selectedMaterial.id),
+          companyName: requestData.companyName.trim(),
+          buyerName: requestData.buyerName.trim(),
+          email: requestData.email.trim(),
+          quantity: requestedQuantity,
+          message: requestData.message.trim(),
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Unable to submit request.')
+      }
+
+      setRequestSubmitted(true)
+      onRefresh()
+    } catch (error) {
+      setRequestError(
+        error.message || 'Could not connect to the server. Please try again.'
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  function ProgressBar({ material }) {
+    const total = Number(material.quantity)
+    const taken = total - getAvailable(material)
+    const percent = total > 0 ? Math.min(100, (taken / total) * 100) : 0
+
+    return (
+      <div className="reserve-block">
+        <div className="progress">
+          <div className="progress-fill" style={{ width: `${percent}%` }} />
+        </div>
+        <small>
+          {taken.toLocaleString()} / {total.toLocaleString()} {material.unit}{' '}
+          already reserved
+        </small>
+      </div>
+    )
   }
 
   return (
@@ -107,15 +173,11 @@ function Materials({
         <h1>Find Reusable Materials</h1>
 
         <p>
-          Explore materials listed by suppliers and find resources
-          for your business.
+          Explore materials listed by suppliers. Request only the quantity you
+          need, and other buyers can take the rest.
         </p>
 
-        {user && (
-          <p className="demo-note">
-            Signed in as {user.name} ({user.role}).
-          </p>
-        )}
+        {user && <p className="demo-note">Signed in as {user.name}.</p>}
       </div>
 
       <div className="materials-search">
@@ -128,11 +190,7 @@ function Materials({
           onChange={(event) => setSearch(event.target.value)}
         />
 
-        {search && (
-          <button onClick={() => setSearch('')}>
-            Clear
-          </button>
-        )}
+        {search && <button onClick={() => setSearch('')}>Clear</button>}
       </div>
 
       <div className="category-filters">
@@ -155,7 +213,10 @@ function Materials({
       {filteredMaterials.length > 0 ? (
         <div className="listing-grid">
           {filteredMaterials.map((material) => (
-            <article className="listing-card" key={material.id}>
+            <article
+              className={`listing-card ${isFulfilled(material) ? 'fulfilled' : ''}`}
+              key={material.id}
+            >
               <div
                 className={`listing-icon ${(material.category || 'other').toLowerCase()}`}
               >
@@ -164,16 +225,17 @@ function Materials({
 
               <div className="listing-category">
                 {material.category}
+                {isFulfilled(material) && (
+                  <span className="fulfilled-badge">Fully reserved</span>
+                )}
               </div>
 
               <h3>{material.name}</h3>
 
               <div className="listing-detail">
                 <span>Available quantity</span>
-
                 <strong>
-                  {Number(material.quantity).toLocaleString()}{' '}
-                  {material.unit}
+                  {getAvailable(material).toLocaleString()} {material.unit}
                 </strong>
               </div>
 
@@ -181,6 +243,8 @@ function Materials({
                 <span>Condition</span>
                 <strong>{material.condition}</strong>
               </div>
+
+              <ProgressBar material={material} />
 
               <div className="listing-location">
                 <span>⌖</span> {material.location}
@@ -192,6 +256,7 @@ function Materials({
                   setSelectedMaterial(material)
                   setShowRequestForm(false)
                   setRequestSubmitted(false)
+                  setRequestError('')
                 }}
               >
                 View Details ↗
@@ -242,9 +307,7 @@ function Materials({
                 </div>
 
                 <p className="eyebrow">MATERIAL DETAILS</p>
-
                 <h2>{selectedMaterial.name}</h2>
-
                 <p>{selectedMaterial.description}</p>
 
                 <div className="modal-info">
@@ -254,9 +317,9 @@ function Materials({
                   </div>
 
                   <div>
-                    <span>Quantity</span>
+                    <span>Available</span>
                     <strong>
-                      {selectedMaterial.quantity}{' '}
+                      {getAvailable(selectedMaterial).toLocaleString()}{' '}
                       {selectedMaterial.unit}
                     </strong>
                   </div>
@@ -272,16 +335,26 @@ function Materials({
                   </div>
                 </div>
 
+                <ProgressBar material={selectedMaterial} />
+
                 <p className="demo-note">
-                  Sample listing for demonstration. Supplier contact
-                  is not connected yet.
+                  Your request goes to the supplier&apos;s dashboard. Quantity
+                  is reserved once the supplier accepts it.
                 </p>
 
                 <button
                   className="view-details-btn"
                   onClick={openRequestForm}
+                  disabled={
+                    isFulfilled(selectedMaterial) ||
+                    isOwnListing(selectedMaterial)
+                  }
                 >
-                  Send Request ↗
+                  {isFulfilled(selectedMaterial)
+                    ? 'Fully Reserved'
+                    : isOwnListing(selectedMaterial)
+                      ? 'This is your listing'
+                      : 'Send Request ↗'}
                 </button>
               </>
             ) : requestSubmitted ? (
@@ -291,28 +364,20 @@ function Materials({
                 <h2>Request Submitted!</h2>
 
                 <p>
-                  Your request for {selectedMaterial.name} has been
-                  submitted in this demo. It is not stored permanently
-                  and the supplier has not been notified.
+                  Your request for {selectedMaterial.name} has been sent to the
+                  supplier. You can track its status in your Dashboard.
                 </p>
 
-                <button
-                  className="view-details-btn"
-                  onClick={closeModal}
-                >
+                <button className="view-details-btn" onClick={closeModal}>
                   Back to Materials
                 </button>
               </div>
             ) : (
               <>
-                <p className="eyebrow">BUYER REQUEST</p>
-
+                <p className="eyebrow">MATERIAL REQUEST</p>
                 <h2>Request {selectedMaterial.name}</h2>
 
-                <form
-                  className="request-form"
-                  onSubmit={handleRequestSubmit}
-                >
+                <form className="request-form" onSubmit={handleRequestSubmit}>
                   <label>
                     Company Name *
                     <input
@@ -360,12 +425,13 @@ function Materials({
                   </label>
 
                   <label>
-                    Required Quantity ({selectedMaterial.unit}) *
+                    Required Quantity ({selectedMaterial.unit}) * — max{' '}
+                    {getAvailable(selectedMaterial)}
                     <input
                       type="number"
                       name="quantity"
                       min="1"
-                      max={selectedMaterial.quantity}
+                      max={getAvailable(selectedMaterial)}
                       value={requestData.quantity}
                       onChange={(event) =>
                         setRequestData({
@@ -393,11 +459,18 @@ function Materials({
                     />
                   </label>
 
+                  {requestError && (
+                    <p role="alert" className="request-error">
+                      {requestError}
+                    </p>
+                  )}
+
                   <button
                     className="view-details-btn"
                     type="submit"
+                    disabled={submitting}
                   >
-                    Submit Request ↗
+                    {submitting ? 'Submitting...' : 'Submit Request ↗'}
                   </button>
                 </form>
               </>

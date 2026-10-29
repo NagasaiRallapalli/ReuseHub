@@ -1,15 +1,11 @@
-
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import './App.css'
 import Materials from './Materials'
 import ListWaste from './ListWaste'
-import { initialMaterials } from './materialData'
+import Dashboard from './Dashboard'
 import Auth from './Auth'
 
 function App() {
-  const [page, setPage] = useState('home')
-  const [materials, setMaterials] = useState(initialMaterials)
-
   const [user, setUser] = useState(() => {
     try {
       return JSON.parse(
@@ -20,57 +16,94 @@ function App() {
     }
   })
 
-  const handleLogin = (account) => {
-    setUser(account)
+  const [page, setPage] = useState('home')
+  const [materials, setMaterials] = useState([])
 
+  const loadMaterials = useCallback(async () => {
+    try {
+      const res = await fetch('http://localhost:5000/api/materials')
+      const data = await res.json()
+
+      setMaterials(
+        (data.materials || []).map((m) => ({
+          id: m._id,
+          name: m.name,
+          category: m.category,
+          quantity: m.quantity,
+          availableQuantity: m.availableQuantity ?? m.quantity,
+          unit: m.unit,
+          condition: m.condition,
+          location: m.location,
+          description: m.description,
+          icon: m.icon,
+          status: m.status || 'Available',
+          supplierId: m.supplierId,
+          supplier: {
+            companyName: m.companyName,
+            contactPerson: m.contactPerson,
+            email: m.email,
+          },
+        }))
+      )
+    } catch (err) {
+      console.error('Could not load materials', err)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadMaterials()
+  }, [loadMaterials])
+
+  function handleLogin(account) {
+    setUser(account)
     localStorage.setItem(
       'reusehub_demo_user',
       JSON.stringify(account)
     )
-
     setPage('home')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const handleLogout = () => {
+  function handleLogout() {
     localStorage.removeItem('reusehub_demo_user')
+    localStorage.removeItem('reusehub_token')
     setUser(null)
     setPage('home')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const goHome = () => {
+  function goHome() {
     setPage('home')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const goMaterials = () => {
+  function goMaterials() {
     setPage('materials')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const goListWaste = () => {
+  function goListWaste() {
     setPage('list')
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const handleListWaste = () => {
+  function goDashboard() {
+    setPage('dashboard')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function handleListWaste() {
     if (!user) {
       setPage('auth')
       return
     }
 
-    if (user.role !== 'supplier') {
-      alert('Only Supplier accounts can publish material listings.')
-      return
-    }
 
     goListWaste()
   }
 
-  const goHowItWorks = () => {
+  function goHowItWorks() {
     setPage('home')
-
     setTimeout(() => {
       document.getElementById('how-it-works')?.scrollIntoView({
         behavior: 'smooth',
@@ -81,48 +114,36 @@ function App() {
   return (
     <div className="app">
       <nav className="navbar">
-        <a
-          href="#home"
-          className="logo"
-          onClick={(e) => {
-            e.preventDefault()
-            goHome()
-          }}
-        >
+        <a href="#home" className="logo" onClick={(e) => {
+          e.preventDefault()
+          goHome()
+        }}>
           <span className="logo-icon">♻</span>
           Reuse<span>Hub</span>
         </a>
 
         <div className="nav-links">
-          <a
-            href="#home"
-            onClick={(e) => {
-              e.preventDefault()
-              goHome()
-            }}
-          >
-            Home
-          </a>
+          <a href="#home" onClick={(e) => {
+            e.preventDefault()
+            goHome()
+          }}>Home</a>
 
-          <a
-            href="#materials-page"
-            onClick={(e) => {
-              e.preventDefault()
-              goMaterials()
-            }}
-          >
-            Find Materials
-          </a>
+          <a href="#materials-page" onClick={(e) => {
+            e.preventDefault()
+            goMaterials()
+          }}>Find Materials</a>
 
-          <a
-            href="#how-it-works"
-            onClick={(e) => {
+          <a href="#how-it-works" onClick={(e) => {
+            e.preventDefault()
+            goHowItWorks()
+          }}>How It Works</a>
+
+          {user && (
+            <a href="#dashboard" onClick={(e) => {
               e.preventDefault()
-              goHowItWorks()
-            }}
-          >
-            How It Works
-          </a>
+              goDashboard()
+            }}>Dashboard</a>
+          )}
         </div>
 
         <div className="nav-actions">
@@ -131,11 +152,7 @@ function App() {
               <span className="user-greeting">
                 Hi, {user.name}
               </span>
-
-              <button
-                className="login-btn"
-                onClick={handleLogout}
-              >
+              <button className="login-btn" onClick={handleLogout}>
                 Logout
               </button>
             </>
@@ -164,32 +181,24 @@ function App() {
           materials={materials}
           user={user}
           onRequireLogin={() => setPage('auth')}
+          onRefresh={loadMaterials}
         />
       ) : page === 'list' ? (
-        user && user.role === 'supplier' ? (
-          <ListWaste
-            onAddMaterial={(newMaterial) => {
-              setMaterials((previousMaterials) => [
-                newMaterial,
-                ...previousMaterials,
-              ])
-
-              setPage('materials')
-              window.scrollTo({ top: 0, behavior: 'smooth' })
-            }}
-          />
-        ) : (
-          <main style={{ padding: '60px 20px', textAlign: 'center' }}>
-            <h2>Supplier Login Required</h2>
-            <p>Please login with a Supplier account to publish listings.</p>
-            <button
-              className="primary-btn"
-              onClick={() => setPage('auth')}
-            >
-              Login / Register
-            </button>
-          </main>
-        )
+        <ListWaste
+          onAddMaterial={async () => {
+            await loadMaterials()
+            setPage('materials')
+            window.scrollTo({ top: 0, behavior: 'smooth' })
+          }}
+        />
+      ) : page === 'dashboard' && user ? (
+        <Dashboard
+          user={user}
+          materials={materials}
+          onRefresh={loadMaterials}
+          onRequireLogin={() => setPage('auth')}
+          onListWaste={goListWaste}
+        />
       ) : (
         <>
           <main>
@@ -267,7 +276,6 @@ function App() {
                   <p className="eyebrow">EXPLORE MATERIALS</p>
                   <h2>Waste for one. Resource for another.</h2>
                 </div>
-
                 <p className="section-description">
                   Discover reusable industrial materials from different
                   categories.
@@ -278,57 +286,41 @@ function App() {
                 <article className="material-card">
                   <div className="material-icon metal">⚙</div>
                   <h3>Metal Scrap</h3>
-                  <p>
-                    Aluminium, steel and other reusable metal materials.
-                  </p>
+                  <p>Aluminium, steel and other reusable metal materials.</p>
                   <a href="#materials-page" onClick={(e) => {
                     e.preventDefault()
                     goMaterials()
-                  }}>
-                    Explore category ↗
-                  </a>
+                  }}>Explore category ↗</a>
                 </article>
 
                 <article className="material-card">
                   <div className="material-icon plastic">◈</div>
                   <h3>Plastic Waste</h3>
-                  <p>
-                    Reusable plastic materials for further processing.
-                  </p>
+                  <p>Reusable plastic materials for further processing.</p>
                   <a href="#materials-page" onClick={(e) => {
                     e.preventDefault()
                     goMaterials()
-                  }}>
-                    Explore category ↗
-                  </a>
+                  }}>Explore category ↗</a>
                 </article>
 
                 <article className="material-card">
                   <div className="material-icon rubber">◉</div>
                   <h3>Rubber Waste</h3>
-                  <p>
-                    Industrial rubber leftovers with reuse potential.
-                  </p>
+                  <p>Industrial rubber leftovers with reuse potential.</p>
                   <a href="#materials-page" onClick={(e) => {
                     e.preventDefault()
                     goMaterials()
-                  }}>
-                    Explore category ↗
-                  </a>
+                  }}>Explore category ↗</a>
                 </article>
 
                 <article className="material-card">
                   <div className="material-icon wood">▤</div>
                   <h3>Wood Waste</h3>
-                  <p>
-                    Reusable wood offcuts and manufacturing leftovers.
-                  </p>
+                  <p>Reusable wood offcuts and manufacturing leftovers.</p>
                   <a href="#materials-page" onClick={(e) => {
                     e.preventDefault()
                     goMaterials()
-                  }}>
-                    Explore category ↗
-                  </a>
+                  }}>Explore category ↗</a>
                 </article>
               </div>
 
@@ -372,14 +364,10 @@ function App() {
           </main>
 
           <footer className="footer">
-            <a
-              href="#home"
-              className="logo"
-              onClick={(e) => {
-                e.preventDefault()
-                goHome()
-              }}
-            >
+            <a href="#home" className="logo" onClick={(e) => {
+              e.preventDefault()
+              goHome()
+            }}>
               <span className="logo-icon">♻</span>
               Reuse<span>Hub</span>
             </a>

@@ -1,0 +1,242 @@
+.dashboard-page {
+  min-height: 80vh;
+  padding: 55px 7%;
+  background: #f8fbf7;
+}
+
+.dashboard-header {
+  max-width: 700px;
+  margin: 0 auto 30px;
+  text-align: center;
+}
+
+.dashboard-header h1 {
+  margin: 12px 0;
+  color: #173d2b;
+  font-family: 'Manrope', sans-serif;
+  font-size: clamp(28px, 4vw, 38px);
+  letter-spacing: -1px;
+}
+
+.dashboard-header > p:last-child {
+  color: #718075;
+  font-size: 14px;
+}
+
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  max-width: 800px;
+  margin: 0 auto 30px;
+}
+
+.dashboard-stats > div {
+  padding: 18px;
+  border: 1px solid #e5ece4;
+  border-radius: 12px;
+  background: white;
+  text-align: center;
+}
+
+.dashboard-stats strong {
+  display: block;
+  color: #197348;
+  font-family: 'Manrope', sans-serif;
+  font-size: 28px;
+}
+
+.dashboard-stats span {
+  color: #78847b;
+  font-size: 12px;
+}
+
+.dashboard-tabs {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.dashboard-tabs button {
+  padding: 10px 19px;
+  border: 1px solid #dfe9df;
+  border-radius: 25px;
+  background: white;
+  color: #637568;
+  font-size: 13px;
+}
+
+.dashboard-tabs button.active-tab {
+  border-color: #197348;
+  background: #197348;
+  color: white;
+}
+
+.dashboard-tabs em {
+  margin-left: 7px;
+  padding: 1px 7px;
+  border-radius: 20px;
+  background: #f0a030;
+  color: white;
+  font-size: 11px;
+  font-style: normal;
+}
+
+.dash-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.dash-card {
+  padding: 22px;
+  border: 1px solid #e5ece4;
+  border-radius: 14px;
+  background: white;
+}
+
+.dash-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.dash-card h3 {
+  margin: 0 0 5px;
+  color: #173d2b;
+  font-size: 17px;
+}
+
+.dash-sub {
+  margin: 0;
+  color: #78847b;
+  font-size: 12px;
+}
+
+.dash-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin-top: 14px;
+  color: #78847b;
+  font-size: 12px;
+}
+
+.dash-meta strong {
+  color: #355440;
+}
+
+.dash-card .progress {
+  margin-top: 14px;
+}
+
+.dash-message {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #f6faf5;
+  color: #546a5a;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.dash-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.dash-actions button {
+  padding: 10px 22px;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.accept-btn {
+  background: #197348;
+}
+
+.accept-btn:hover {
+  background: #115c38;
+}
+
+.reject-btn {
+  background: #c0392b;
+}
+
+.reject-btn:hover {
+  background: #a02f23;
+}
+
+.dash-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.status-badge {
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-pending {
+  background: #fff4de;
+  color: #9a6a12;
+}
+
+.status-accepted,
+.status-available {
+  background: #e2f5e8;
+  color: #1c7a43;
+}
+
+.status-rejected {
+  background: #fde8e6;
+  color: #b42318;
+}
+
+.status-fulfilled {
+  background: #e8edf3;
+  color: #4a5d73;
+}
+
+.dashboard-empty {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 45px 20px;
+  border: 1px dashed #cbdccc;
+  border-radius: 14px;
+  background: white;
+  color: #718075;
+  font-size: 14px;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.dashboard-empty .primary-btn {
+  margin-top: 16px;
+}
+
+@media (max-width: 600px) {
+  .dashboard-page {
+    padding: 38px 5%;
+  }
+
+  .dashboard-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .dash-card-top {
+    flex-direction: column;
+  }
+}

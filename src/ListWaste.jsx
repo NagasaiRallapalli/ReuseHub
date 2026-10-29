@@ -1,6 +1,7 @@
-
 import { useState } from 'react'
 import './ListWaste.css'
+
+const API_URL = 'http://localhost:5000/api/materials'
 
 function ListWaste({ onAddMaterial }) {
   const [formData, setFormData] = useState({
@@ -17,44 +18,76 @@ function ListWaste({ onAddMaterial }) {
   })
 
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
 
   function handleChange(event) {
     const { name, value } = event.target
-
     setFormData((previous) => ({
       ...previous,
       [name]: value,
     }))
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault()
+    setSubmitting(true)
+    setError('')
 
-    const newMaterial = {
-      id: Date.now(),
-      name: formData.materialName.trim(),
-      category: formData.category,
-      quantity: Number(formData.quantity),
-      unit: formData.unit,
-      condition: formData.condition,
-      location: formData.location.trim(),
-      price: 'Contact supplier',
-      description: formData.description.trim() ||
-        'Reusable industrial material listed by a supplier.',
-      icon:
-        formData.category === 'Metal' ? '⚙' :
-        formData.category === 'Plastic' ? '◈' :
-        formData.category === 'Rubber' ? '◉' :
-        formData.category === 'Wood' ? '▤' : '♻',
-      supplier: {
-        companyName: formData.companyName.trim(),
-        contactPerson: formData.contactPerson.trim(),
-        email: formData.email.trim(),
-      },
+    const token = localStorage.getItem('reusehub_token')
+
+    if (!token) {
+      setError('Please log in again before publishing a listing.')
+      setSubmitting(false)
+      return
     }
 
-    onAddMaterial(newMaterial)
-    setSubmitted(true)
+    const icon =
+      formData.category === 'Metal' ? '⚙' :
+      formData.category === 'Plastic' ? '◈' :
+      formData.category === 'Rubber' ? '◉' :
+      formData.category === 'Wood' ? '▤' : '♻'
+
+    try {
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          name: formData.materialName.trim(),
+          category: formData.category,
+          quantity: Number(formData.quantity),
+          unit: formData.unit,
+          condition: formData.condition,
+          location: formData.location.trim(),
+          description: formData.description.trim(),
+          icon,
+          companyName: formData.companyName.trim(),
+          contactPerson: formData.contactPerson.trim(),
+          email: formData.email.trim(),
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Unable to publish listing.')
+      }
+
+      if (onAddMaterial) {
+        onAddMaterial(data.material)
+      }
+
+      setSubmitted(true)
+    } catch (err) {
+      setError(
+        err.message || 'Could not connect to the server. Try again.'
+      )
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   if (submitted) {
@@ -62,14 +95,10 @@ function ListWaste({ onAddMaterial }) {
       <div className="list-waste-page">
         <div className="listing-success">
           <div className="success-icon">✓</div>
-          <h2>Listing Added Successfully!</h2>
-          <p>
-            Your material has been added to the current ReuseHub
-            session. Buyers can now find it on the Materials page.
-          </p>
+          <h2>Listing Published Successfully!</h2>
+          <p>Your material has been saved to the ReuseHub database.</p>
           <p className="listing-note">
-            Demo only: the listing is not stored permanently and
-            will be lost if the page is refreshed.
+            Your listing should remain available after a page refresh.
           </p>
           <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
             Continue
@@ -93,60 +122,35 @@ function ListWaste({ onAddMaterial }) {
       <form className="listing-form" onSubmit={handleSubmit}>
         <h2>Company Details</h2>
 
-        <div className="listing-grid">
+        <div className="listing-form-grid">
           <div className="listing-field">
             <label>Company Name *</label>
-            <input
-              name="companyName"
-              value={formData.companyName}
-              onChange={handleChange}
-              placeholder="Enter company name"
-              required
-            />
+            <input name="companyName" value={formData.companyName}
+              onChange={handleChange} required />
           </div>
 
           <div className="listing-field">
             <label>Contact Person *</label>
-            <input
-              name="contactPerson"
-              value={formData.contactPerson}
-              onChange={handleChange}
-              placeholder="Enter contact person"
-              required
-            />
+            <input name="contactPerson" value={formData.contactPerson}
+              onChange={handleChange} required />
           </div>
 
           <div className="listing-field">
             <label>Email Address *</label>
-            <input
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="company@example.com"
-              required
-            />
+            <input type="email" name="email" value={formData.email}
+              onChange={handleChange} required />
           </div>
 
           <div className="listing-field">
             <label>Material Name *</label>
-            <input
-              name="materialName"
-              value={formData.materialName}
-              onChange={handleChange}
-              placeholder="e.g. Aluminium Scrap"
-              required
-            />
+            <input name="materialName" value={formData.materialName}
+              onChange={handleChange} required />
           </div>
 
           <div className="listing-field">
             <label>Category *</label>
-            <select
-              name="category"
-              value={formData.category}
-              onChange={handleChange}
-              required
-            >
+            <select name="category" value={formData.category}
+              onChange={handleChange} required>
               <option value="">Select category</option>
               <option value="Metal">Metal</option>
               <option value="Plastic">Plastic</option>
@@ -160,21 +164,9 @@ function ListWaste({ onAddMaterial }) {
           <div className="listing-field">
             <label>Quantity *</label>
             <div className="quantity-field">
-              <input
-                type="number"
-                name="quantity"
-                value={formData.quantity}
-                onChange={handleChange}
-                min="1"
-                placeholder="Enter quantity"
-                required
-              />
-
-              <select
-                name="unit"
-                value={formData.unit}
-                onChange={handleChange}
-              >
+              <input type="number" name="quantity" value={formData.quantity}
+                onChange={handleChange} min="1" required />
+              <select name="unit" value={formData.unit} onChange={handleChange}>
                 <option value="kg">Kg</option>
                 <option value="tonnes">Tonnes</option>
                 <option value="pieces">Pieces</option>
@@ -185,12 +177,8 @@ function ListWaste({ onAddMaterial }) {
 
           <div className="listing-field">
             <label>Material Condition *</label>
-            <select
-              name="condition"
-              value={formData.condition}
-              onChange={handleChange}
-              required
-            >
+            <select name="condition" value={formData.condition}
+              onChange={handleChange} required>
               <option value="">Select condition</option>
               <option value="Unused">New / Unused</option>
               <option value="Good">Good</option>
@@ -202,35 +190,24 @@ function ListWaste({ onAddMaterial }) {
 
           <div className="listing-field">
             <label>Location *</label>
-            <input
-              name="location"
-              value={formData.location}
-              onChange={handleChange}
-              placeholder="City, State"
-              required
-            />
+            <input name="location" value={formData.location}
+              onChange={handleChange} required />
           </div>
         </div>
 
         <div className="listing-field description-field">
           <label>Material Description</label>
-          <textarea
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            placeholder="Describe the material and its condition..."
-            rows="4"
-          />
+          <textarea name="description" value={formData.description}
+            onChange={handleChange} rows="4" />
         </div>
 
-        <button className="listing-submit" type="submit">
-          Publish Material Listing ↗
+        {error && <p className="request-error" role="alert">{error}</p>}
+
+        <button className="listing-submit" type="submit" disabled={submitting}>
+          {submitting ? 'Publishing...' : 'Publish Material Listing ↗'}
         </button>
 
-        <p className="listing-note">
-          * Required fields. This frontend demo adds the listing to
-          the current session only.
-        </p>
+        <p className="listing-note">* Required fields.</p>
       </form>
     </div>
   )

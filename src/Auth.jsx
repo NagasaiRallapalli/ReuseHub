@@ -9,7 +9,6 @@ function Auth({ onLogin, onBack }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [role, setRole] = useState('buyer')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -39,7 +38,6 @@ function Auth({ onLogin, onBack }) {
             name: name.trim(),
             email: cleanEmail,
             password,
-            role,
           }
         : {
             email: cleanEmail,
@@ -66,7 +64,6 @@ function Auth({ onLogin, onBack }) {
         JSON.stringify(data.user)
       )
 
-      // Clear the old demo accounts, which stored plain-text passwords.
       localStorage.removeItem('reusehub_demo_accounts')
 
       onLogin(data.user)
@@ -149,20 +146,6 @@ function Auth({ onLogin, onBack }) {
               required
             />
           </div>
-
-          {isRegister && (
-            <div className="auth-field">
-              <label htmlFor="auth-role">Account Type</label>
-              <select
-                id="auth-role"
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-              >
-                <option value="buyer">Buyer — Find materials</option>
-                <option value="supplier">Supplier — List waste</option>
-              </select>
-            </div>
-          )}
 
           {error && <p className="auth-error">{error}</p>}
 
