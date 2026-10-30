@@ -87,7 +87,7 @@
 .results-info {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 15px;
   margin-bottom: 22px;
 }
@@ -102,6 +102,38 @@
 .results-info > span {
   color: #718075;
   font-size: 13px;
+}
+
+.price-sort {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-left: auto;
+  color: #718075;
+  font-size: 13px;
+}
+
+.price-sort-status {
+  color: #84652a;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.price-sort select {
+  max-width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #dfe9df;
+  border-radius: 8px;
+  background: white;
+  color: #355440;
+  font: inherit;
+}
+
+.listing-price {
+  margin: -11px 0 16px;
+  color: #197348;
+  font-size: 16px;
+  font-weight: 700;
 }
 
 .listing-grid {
@@ -343,6 +375,26 @@
     justify-content: flex-start;
   }
 
+  .results-info {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .price-sort {
+    width: 100%;
+    justify-content: space-between;
+    margin-left: 0;
+  }
+
+  .price-sort-status {
+    width: 100%;
+  }
+
+  .price-sort select {
+    flex: 1;
+    min-width: 0;
+  }
+
   .material-modal {
     padding: 23px;
   }
@@ -486,4 +538,59 @@
 
 .material-modal .reserve-block {
   margin-bottom: 18px;
+}
+
+.price-edit-btn,
+.price-cancel-btn {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.delete-listing-btn {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 12px 15px;
+  border: 1px solid #f0c9c6;
+  border-radius: 8px;
+  background: #fff;
+  color: #b42318;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.delete-listing-btn:hover:not(:disabled) {
+  border-color: #df9c96;
+  background: #fff5f4;
+}
+
+.delete-listing-btn:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.listing-delete-success {
+  margin: 0 0 20px;
+  padding: 12px 15px;
+  border: 1px solid #cce5d2;
+  border-radius: 9px;
+  background: #f0f8f1;
+  color: #23653c;
+  font-size: 13px;
+}
+
+.price-form-unit,
+.price-unavailable-note {
+  margin: 10px 0 16px;
+  color: #718075;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.price-unavailable-note {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #fff8e8;
+  color: #84652a;
 }

@@ -30,6 +30,7 @@ function App() {
           name: m.name,
           category: m.category,
           quantity: m.quantity,
+          pricePerUnit: m.pricePerUnit ?? null,
           availableQuantity: m.availableQuantity ?? m.quantity,
           unit: m.unit,
           condition: m.condition,

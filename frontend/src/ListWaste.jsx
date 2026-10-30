@@ -11,6 +11,7 @@ function ListWaste({ onAddMaterial }) {
     materialName: '',
     category: '',
     quantity: '',
+    pricePerUnit: '',
     unit: 'kg',
     condition: '',
     location: '',
@@ -59,6 +60,7 @@ function ListWaste({ onAddMaterial }) {
           name: formData.materialName.trim(),
           category: formData.category,
           quantity: Number(formData.quantity),
+          pricePerUnit: Number(formData.pricePerUnit),
           unit: formData.unit,
           condition: formData.condition,
           location: formData.location.trim(),
@@ -173,6 +175,23 @@ function ListWaste({ onAddMaterial }) {
                 <option value="litres">Litres</option>
               </select>
             </div>
+          </div>
+
+          <div className="listing-field">
+            <label htmlFor="pricePerUnit">
+              Price per {formData.unit} (₹) *
+            </label>
+            <input
+              id="pricePerUnit"
+              type="number"
+              name="pricePerUnit"
+              value={formData.pricePerUnit}
+              onChange={handleChange}
+              min="0.01"
+              step="0.01"
+              placeholder="e.g. 80"
+              required
+            />
           </div>
 
           <div className="listing-field">

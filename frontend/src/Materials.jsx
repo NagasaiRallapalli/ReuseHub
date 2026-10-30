@@ -9,6 +9,27 @@ function getAvailable(material) {
   return Number(material.availableQuantity ?? material.quantity)
 }
 
+function getPrice(material) {
+  const price = material.pricePerUnit
+
+  if (price == null || price === '') return null
+
+  const numericPrice = Number(price)
+  return Number.isFinite(numericPrice) && numericPrice > 0
+    ? numericPrice
+    : null
+}
+
+function formatPricePerUnit(material) {
+  const price = getPrice(material)
+
+  if (price == null) return 'Price not available'
+
+  return `₹${price.toLocaleString('en-IN', {
+    maximumFractionDigits: 2,
+  })} / ${material.unit || 'unit'}`
+}
+
 function Materials({
   materials = [],
   user = null,
@@ -17,8 +38,15 @@ function Materials({
 }) {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('All')
+  const [sortOrder, setSortOrder] = useState('default')
   const [selectedMaterial, setSelectedMaterial] = useState(null)
   const [showRequestForm, setShowRequestForm] = useState(false)
+  const [showPriceForm, setShowPriceForm] = useState(false)
+  const [priceInput, setPriceInput] = useState('')
+  const [priceError, setPriceError] = useState('')
+  const [deleteError, setDeleteError] = useState('')
+  const [deleteSuccess, setDeleteSuccess] = useState('')
+  const [deleting, setDeleting] = useState(false)
   const [requestSubmitted, setRequestSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [requestError, setRequestError] = useState('')
@@ -44,6 +72,26 @@ function Materials({
 
     return matchesSearch && matchesCategory
   })
+
+  const pricedMaterialCount = filteredMaterials.filter(
+    (material) => getPrice(material) != null
+  ).length
+
+  const sortedMaterials = [...filteredMaterials]
+
+  if (sortOrder !== 'default') {
+    sortedMaterials.sort((first, second) => {
+      const firstPrice = getPrice(first)
+      const secondPrice = getPrice(second)
+
+      if (firstPrice == null) return secondPrice == null ? 0 : 1
+      if (secondPrice == null) return -1
+
+      return sortOrder === 'price-ascending'
+        ? firstPrice - secondPrice
+        : secondPrice - firstPrice
+    })
+  }
 
   const isOwnListing = (material) =>
     user && String(material.supplierId) === String(user.id)
@@ -71,12 +119,15 @@ function Materials({
   }
 
   const closeModal = () => {
-    if (submitting) return
+    if (submitting || deleting) return
 
     setSelectedMaterial(null)
     setShowRequestForm(false)
+    setShowPriceForm(false)
     setRequestSubmitted(false)
     setRequestError('')
+    setPriceError('')
+    setDeleteError('')
   }
 
   const handleRequestSubmit = async (event) => {
@@ -147,6 +198,118 @@ function Materials({
     }
   }
 
+  const handlePriceUpdate = async (event) => {
+    event.preventDefault()
+
+    if (!selectedMaterial || !isOwnListing(selectedMaterial)) return
+
+    const token = localStorage.getItem('reusehub_token')
+    const price = Number(priceInput)
+
+    if (!token) {
+      setPriceError('Please log in again before updating this listing.')
+      return
+    }
+
+    if (!Number.isFinite(price) || price <= 0) {
+      setPriceError('Enter a price greater than zero.')
+      return
+    }
+
+    setSubmitting(true)
+    setPriceError('')
+
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/materials/${encodeURIComponent(selectedMaterial.id)}/price`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ pricePerUnit: price }),
+        }
+      )
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Unable to update listing price.')
+      }
+
+      setSelectedMaterial((current) => ({
+        ...current,
+        pricePerUnit: data.material.pricePerUnit,
+      }))
+      setShowPriceForm(false)
+      onRefresh()
+    } catch (error) {
+      setPriceError(error.message || 'Could not update the listing price.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleDeleteListing = async () => {
+    if (!selectedMaterial || !isOwnListing(selectedMaterial)) return
+
+    const confirmed = window.confirm(
+      `Delete your "${selectedMaterial.name}" listing? This cannot be undone.`
+    )
+
+    if (!confirmed) return
+
+    const token = localStorage.getItem('reusehub_token')
+
+    if (!token) {
+      setDeleteError('Please log in again before deleting this listing.')
+      return
+    }
+
+    setDeleting(true)
+    setDeleteError('')
+
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/materials/${encodeURIComponent(selectedMaterial.id)}`,
+        {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      )
+      const contentType = response.headers.get('content-type') || ''
+      const data = contentType.includes('application/json')
+        ? await response.json()
+        : null
+
+      if (!response.ok) {
+        throw new Error(
+          data?.message ||
+            (response.status === 404
+              ? 'The delete API is not active. Restart the backend and try again.'
+              : 'The server returned an unexpected response. Please restart the backend and try again.')
+        )
+      }
+
+      if (!data) {
+        throw new Error('The server returned an unexpected response. Please try again.')
+      }
+
+      setDeleteSuccess(`${selectedMaterial.name} listing deleted.`)
+      setSelectedMaterial(null)
+      setShowRequestForm(false)
+      setShowPriceForm(false)
+      onRefresh()
+    } catch (error) {
+      setDeleteError(error.message || 'Could not delete the listing.')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   function ProgressBar({ material }) {
     const total = Number(material.quantity)
     const taken = total - getAvailable(material)
@@ -208,11 +371,35 @@ function Materials({
       <div className="results-info">
         <h2>Available Materials</h2>
         <span>{filteredMaterials.length} listings</span>
+        {sortOrder !== 'default' && pricedMaterialCount === 0 && (
+          <p className="price-sort-status" role="status">
+            These listings have no prices to compare. Ask suppliers to update
+            their listing prices.
+          </p>
+        )}
+        <label className="price-sort">
+          <span>Sort by</span>
+          <select
+            value={sortOrder}
+            onChange={(event) => setSortOrder(event.target.value)}
+            aria-label="Sort materials by price"
+          >
+            <option value="default">Default Sorting</option>
+            <option value="price-ascending">Price: Low to High</option>
+            <option value="price-descending">Price: High to Low</option>
+          </select>
+        </label>
       </div>
 
-      {filteredMaterials.length > 0 ? (
+      {deleteSuccess && (
+        <p className="listing-delete-success" role="status">
+          {deleteSuccess}
+        </p>
+      )}
+
+      {sortedMaterials.length > 0 ? (
         <div className="listing-grid">
-          {filteredMaterials.map((material) => (
+          {sortedMaterials.map((material) => (
             <article
               className={`listing-card ${isFulfilled(material) ? 'fulfilled' : ''}`}
               key={material.id}
@@ -231,6 +418,10 @@ function Materials({
               </div>
 
               <h3>{material.name}</h3>
+
+              <div className="listing-price">
+                {formatPricePerUnit(material)}
+              </div>
 
               <div className="listing-detail">
                 <span>Available quantity</span>
@@ -298,7 +489,7 @@ function Materials({
               ×
             </button>
 
-            {!showRequestForm ? (
+            {!showRequestForm && !showPriceForm ? (
               <>
                 <div
                   className={`listing-icon ${(selectedMaterial.category || 'other').toLowerCase()}`}
@@ -314,6 +505,11 @@ function Materials({
                   <div>
                     <span>Category</span>
                     <strong>{selectedMaterial.category}</strong>
+                  </div>
+
+                  <div>
+                    <span>Price per unit</span>
+                    <strong>{formatPricePerUnit(selectedMaterial)}</strong>
                   </div>
 
                   <div>
@@ -342,6 +538,43 @@ function Materials({
                   is reserved once the supplier accepts it.
                 </p>
 
+                {isOwnListing(selectedMaterial) && (
+                  <>
+                    <button
+                      className="secondary-btn price-edit-btn"
+                      onClick={() => {
+                        setPriceInput(
+                          getPrice(selectedMaterial)?.toString() || ''
+                        )
+                        setPriceError('')
+                        setShowPriceForm(true)
+                      }}
+                    >
+                      Update Listing Price
+                    </button>
+                    <button
+                      className="delete-listing-btn"
+                      onClick={handleDeleteListing}
+                      disabled={deleting}
+                    >
+                      {deleting ? 'Deleting...' : 'Delete Listing'}
+                    </button>
+                    {deleteError && (
+                      <p className="request-error" role="alert">
+                        {deleteError}
+                      </p>
+                    )}
+                  </>
+                )}
+
+                {!getPrice(selectedMaterial) &&
+                  !isOwnListing(selectedMaterial) && (
+                    <p className="price-unavailable-note">
+                      This older listing has no price yet. Please contact the
+                      supplier to confirm the price.
+                    </p>
+                  )}
+
                 <button
                   className="view-details-btn"
                   onClick={openRequestForm}
@@ -356,6 +589,51 @@ function Materials({
                       ? 'This is your listing'
                       : 'Send Request ↗'}
                 </button>
+              </>
+            ) : showPriceForm ? (
+              <>
+                <p className="eyebrow">SUPPLIER PORTAL</p>
+                <h2>Update {selectedMaterial.name} price</h2>
+                <p className="price-form-unit">
+                  Enter the price per {selectedMaterial.unit}.
+                </p>
+
+                <form className="request-form" onSubmit={handlePriceUpdate}>
+                  <label>
+                    Price per {selectedMaterial.unit} (₹) *
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      value={priceInput}
+                      onChange={(event) => setPriceInput(event.target.value)}
+                      placeholder="e.g. 80"
+                      required
+                    />
+                  </label>
+
+                  {priceError && (
+                    <p className="request-error" role="alert">
+                      {priceError}
+                    </p>
+                  )}
+
+                  <button
+                    className="view-details-btn"
+                    type="submit"
+                    disabled={submitting}
+                  >
+                    {submitting ? 'Saving...' : 'Save Price'}
+                  </button>
+                  <button
+                    className="secondary-btn price-cancel-btn"
+                    type="button"
+                    onClick={() => setShowPriceForm(false)}
+                    disabled={submitting}
+                  >
+                    Cancel
+                  </button>
+                </form>
               </>
             ) : requestSubmitted ? (
               <div className="request-success">

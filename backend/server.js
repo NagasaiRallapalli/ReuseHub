@@ -152,6 +152,7 @@ app.post('/api/materials', authenticateToken, async (req, res) => {
       name,
       category,
       quantity,
+      pricePerUnit,
       unit,
       condition: materialCondition,
       location,
@@ -161,6 +162,18 @@ app.post('/api/materials', authenticateToken, async (req, res) => {
       contactPerson,
       email,
     } = req.body
+
+    const parsedPricePerUnit =
+      typeof pricePerUnit === 'number' ||
+      (typeof pricePerUnit === 'string' && pricePerUnit.trim() !== '')
+        ? Number(pricePerUnit)
+        : NaN
+
+    if (!Number.isFinite(parsedPricePerUnit) || parsedPricePerUnit <= 0) {
+      return res.status(400).json({
+        message: 'Price per unit must be a positive number.',
+      })
+    }
 
     if (
       !name?.trim() ||
@@ -183,6 +196,7 @@ app.post('/api/materials', authenticateToken, async (req, res) => {
       name: name.trim(),
       category: category.trim(),
       quantity: Number(quantity),
+      pricePerUnit: parsedPricePerUnit,
       availableQuantity: Number(quantity),
       unit: unit.trim(),
       condition: materialCondition.trim(),
@@ -202,6 +216,85 @@ app.post('/api/materials', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Create material error:', error.message)
     return res.status(500).json({ message: 'Unable to save material listing.' })
+  }
+})
+
+app.patch('/api/materials/:id/price', authenticateToken, async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid material id.' })
+    }
+
+    const { pricePerUnit } = req.body
+    const parsedPricePerUnit =
+      typeof pricePerUnit === 'number' ||
+      (typeof pricePerUnit === 'string' && pricePerUnit.trim() !== '')
+        ? Number(pricePerUnit)
+        : NaN
+
+    if (!Number.isFinite(parsedPricePerUnit) || parsedPricePerUnit <= 0) {
+      return res.status(400).json({
+        message: 'Price per unit must be a positive number.',
+      })
+    }
+
+    const material = await Material.findOneAndUpdate(
+      { _id: req.params.id, supplierId: req.userId },
+      { $set: { pricePerUnit: parsedPricePerUnit } },
+      { new: true, runValidators: true }
+    )
+
+    if (!material) {
+      return res
+        .status(404)
+        .json({ message: 'Listing not found for your supplier account.' })
+    }
+
+    return res.json({
+      message: 'Listing price updated successfully.',
+      material,
+    })
+  } catch (error) {
+    console.error('Update material price error:', error.message)
+    return res.status(500).json({ message: 'Unable to update listing price.' })
+  }
+})
+
+app.delete('/api/materials/:id', authenticateToken, async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: 'Invalid material id.' })
+    }
+
+    const material = await Material.findOne({
+      _id: req.params.id,
+      supplierId: req.userId,
+    })
+
+    if (!material) {
+      return res
+        .status(404)
+        .json({ message: 'Listing not found for your supplier account.' })
+    }
+
+    const pendingRequest = await Request.exists({
+      materialId: String(material._id),
+      status: 'Pending',
+    })
+
+    if (pendingRequest) {
+      return res.status(409).json({
+        message:
+          'This listing has pending requests. Resolve them before deleting the listing.',
+      })
+    }
+
+    await Material.deleteOne({ _id: material._id, supplierId: req.userId })
+
+    return res.json({ message: 'Material listing deleted successfully.' })
+  } catch (error) {
+    console.error('Delete material error:', error.message)
+    return res.status(500).json({ message: 'Unable to delete material listing.' })
   }
 })
 
@@ -373,6 +466,10 @@ app.patch('/api/requests/:id/status', authenticateToken, async (req, res) => {
   }
 })
 
+app.use('/api', (req, res) => {
+  return res.status(404).json({ message: 'API endpoint not found.' })
+})
+
 // ---------- Start ----------
 async function startServer() {
   try {
@@ -384,9 +481,16 @@ async function startServer() {
     console.log('MongoDB connected successfully!')
 
     // One-time migration: old listings without availableQuantity
-    await Material.updateMany({ availableQuantity: { $exists: false } }, [
-      { $set: { availableQuantity: '$quantity' } },
-    ])
+    await Material.collection.updateMany(
+  { availableQuantity: { $exists: false } },
+  [
+    {
+      $set: {
+        availableQuantity: '$quantity',
+      },
+    },
+  ]
+)
 
     const PORT = process.env.PORT || 5000
     app.listen(PORT, () => {

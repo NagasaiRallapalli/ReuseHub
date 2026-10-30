@@ -1,16 +1,40 @@
-# React + Vite
+# ReuseHub
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+ReuseHub is an industrial reusable-material marketplace with a React frontend
+and an Express/MongoDB backend.
 
-Currently, two official plugins are available:
+## Project structure
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- `frontend/` contains the Vite/React application.
+- `backend/` contains the Express API, MongoDB models, and backend environment.
 
-## React Compiler
+## Run the backend
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```powershell
+npm run backend
+```
 
-## Expanding the ESLint configuration
+Set `MONGODB_URI` and `JWT_SECRET` in `backend/.env` before starting the API.
+The backend listens on port `5000` by default.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Run the frontend
+
+From the project root:
+
+```powershell
+npm run dev
+```
+
+Open the local URL printed by Vite. The frontend connects to the API at
+`http://localhost:5000`. The root npm scripts delegate to the corresponding
+frontend scripts; install frontend dependencies with `cd frontend; npm install`
+if needed.
+
+## Build and lint the frontend
+
+Run these commands from the project root:
+
+```powershell
+npm run build
+npm run lint
+```

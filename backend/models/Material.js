@@ -8,6 +8,13 @@ const materialSchema = new mongoose.Schema(
     quantity: { type: Number, required: true, min: 1 },
     // Quantity still left after accepted requests
     availableQuantity: { type: Number, min: 0 },
+    pricePerUnit: {
+      type: Number,
+      validate: {
+        validator: (value) => value == null || value > 0,
+        message: 'Price per unit must be positive.',
+      },
+    },
     unit: { type: String, required: true, trim: true },
     condition: { type: String, required: true, trim: true },
     location: { type: String, required: true, trim: true },
